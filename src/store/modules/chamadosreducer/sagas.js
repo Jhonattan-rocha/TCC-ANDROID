@@ -1,35 +1,46 @@
 import { call, put, all, takeLatest, select } from 'redux-saga/effects';
 import * as actions from './actions';
+import * as actionsChats from '../ChatsReducer/actions';
+import * as actionsFuncionarios from '../funcionarioreducer/actions';
 import * as types from '../types';
 import axios from '../../../services/axios';
-
 
 function* Chamado({payload}){
     try{
         const token = yield select(state => state.authreducer.token);
-        const user = yield select(state => state.authreducer);
+        const iduser = yield select(state => state.authreducer.user.id);
+        const username = yield select(state => state.authreducer.user.nome);
         axios.defaults.headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           };
-        const response = yield call(axios.post, `/chamado/`, payload);
-
-        try{
-            if(payload.files){
-               payload.saveFiles(payload.files, response.data.result.id, user) 
+        const response = yield call(axios.post, "/chamado/", payload);
+        yield put(actions.ChamadoSUCCESS({...response.data}));
+        
+        if(payload.anexos.length > 0){
+            for(let anexo of payload.anexos){
+                anexo.id_chamado = response.data.result.id
+                yield put(actions.ARQUIVO_CRIAR_REQUEST(anexo));
             }
-        }catch(err){
-            console.log(err)
         }
 
-        yield put(actions.ChamadoSUCCESS({...response.data}));
-        yield put(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+eq+${user.user.id}`}));
+        if(payload.comentarios.length > 0){
+            for(let comentario of payload.comentarios){
+                let dados = {conteudo: comentario, id_chamado: response.data.result.id, id_funcionario_criador: iduser};
+                yield put(actionsFuncionarios.COMENTARIO_CRIAR_REQUEST(dados));
+            }
+        }
+
+        yield put(actionsChats.CHATS_CRIAR_REQUEST({id: response.data.result.id, titulo: response.data.result.causa, descricao: response.data.result.descricao, status: 'em aberto', iduser: iduser, username: username}))
+
+        yield put(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+eq+${iduser}`}));
     }catch(error){
         console.log(error);
-        yield  put(actions.ChamadoFALURE());
+        yield  put(actions.ChamadoFALURE(error));
     }
 }
- 
+
+
 function* Chamados({payload = {}}){
     try{
         if(!payload.filter){
@@ -350,6 +361,8 @@ function* Arquivos({payload = {}}){
 function* CriarArquivos({payload}){
     try{
         const token = yield select(state => state.authreducer.token);
+        const iduser = yield select(state => state.authreducer.user.id);
+
         axios.defaults.headers = {
             'Content-Type' :'multipart/form-data',
             'Authorization': `Bearer ${token}`
@@ -357,8 +370,7 @@ function* CriarArquivos({payload}){
         const formData = new FormData();
         formData.append('originalname', payload.originalname);
         formData.append('filename', payload.filename);
-        formData.append('id_dono', payload.id_dono);
-        formData.append('id_empresa_dona', payload.id_empresa_dona);
+        formData.append('id_dono', iduser);
         formData.append('mime_type', payload.mime_type);
         formData.append('id_chamado', payload.id_chamado);
         formData.append('file', payload.file);

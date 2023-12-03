@@ -5,7 +5,6 @@ import axios from '../../../services/axios';
 
 function* Empresa({payload}){
     try{
-        console.log(payload)
         const token = yield select(state => state.authreducer.token);
         axios.defaults.headers = {
             'Content-Type': 'application/json',

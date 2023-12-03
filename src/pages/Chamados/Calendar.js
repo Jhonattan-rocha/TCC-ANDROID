@@ -52,25 +52,18 @@ function CalendarComponent(props) {
     return months[monthNumber];
   };
 
-  const handleUpdate = () => {
-      try{
-        if(filtroChamados === 'my'){
-          dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+eq+${user.user.id}`}));
-          }else if(filtroChamados === "other"){
-              dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+ne+${user.user.id}`}));
-          }else if(filtroChamados === "any"){
-              dispatch(actions.CHAMADOSREQUEST());
-          }
-          dispatch(actions.EXEC_PROCEDURE_REQUEST({query: 'call CountChamados();'}));
-      }catch(err){
-          console.log(err);
-          alert(err.toString());
-      }
-  }
-
-  React.useEffect(()=>{
-      handleUpdate();
-  }, [filtroChamados]);
+  React.useEffect(() => {
+    dispatch(actions.STATUS_REQUEST());
+    if(filtroChamados === 'my'){
+        dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+eq+${user.user.id}`}));
+    }else if(filtroChamados === "other"){
+        dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+ne+${user.user.id}`}));
+    }else if(filtroChamados === "any"){
+        dispatch(actions.CHAMADOSREQUEST());
+    }else if(filtroChamados === "resp"){
+      dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_resp+eq+${user.user.id}`}));
+    }
+}, [user.user.id, dispatch, filtroChamados]);
 
   const renderCalendarDays = () => {
     const calendarDays = [];

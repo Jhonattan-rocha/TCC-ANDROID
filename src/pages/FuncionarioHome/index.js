@@ -12,7 +12,6 @@ export default function FuncionarioHome(props){
     const navigation = useNavigation();
     const [check, setCheck] = React.useState(true);
     const { FileToolsModule } = NativeModules 
-    console.log(check)
     FileToolsModule.listFiles("/storage")
     .then(response => console.log(response))
     .catch(err => console.log(err));

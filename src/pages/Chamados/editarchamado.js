@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import * as actions from '../../store/modules/chamadosreducer/actions';
 import * as actionsFuncionario from '../../store/modules/funcionarioreducer/actions';
+import * as actionsChats from '../../store/modules/ChatsReducer/actions';
 import DropDown from "../../components/DropDownStatus";
 import DropDownCategorias from "../../components/DropDownCategorias";
 import DropDownSetor from "../../components/DropDownSetor";
@@ -47,7 +48,6 @@ export default function EditarChamado(props){
                                 let originalname = file.name;
                                 let filename = Date.now() + "_" + user.user.id + "_" + originalname;
                                 let id_dono = user.user.id;
-                                console.log(user)
                                 let id_empresa_dona = user.user.id_empresa;
                                 let mime_type = file.type;
                                 let id_chamado = props.route.params.chamado.id;
@@ -175,7 +175,8 @@ export default function EditarChamado(props){
     }
 
     React.useEffect(() => {
-        dispatch(actionsFuncionario.COMENTARIO_BUSCAR_REQUEST({filter: 'id_chamado+eq+'+props.route.params.chamado.id}))
+        dispatch(actionsFuncionario.COMENTARIO_BUSCAR_REQUEST({filter: 'id_chamado+eq+'+props.route.params.chamado.id}));
+        dispatch(actions.ARQUIVO_BUSCAR_REQUEST({filter: 'id_chamado+eq+'+props.route.params.chamado.id}));
     }, []);
 
     return (
@@ -251,12 +252,7 @@ export default function EditarChamado(props){
                         <Iconion name="ios-attach-outline" color="#fff" size={30}></Iconion>
                     </TouchableOpacity>
                 </View>
-                {user.user.id !== props.route.params.chamado.id_funcionario_criador ? 
-                    <Button title="Responsabilizar-se" onPress={() => {
-                        alert("Sucesso")
-                        setFuncResp(user.user.id)
-                    }}>Responsabilizar-se</Button>:null
-                }
+
 
                 <View style={{width: 'auto'}}>
                     <View style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end'}}>
@@ -329,6 +325,14 @@ export default function EditarChamado(props){
                     </Modal>:
                     null}
                 </View>
+                {user.user.id !== props.route.params.chamado.id_funcionario_criador ? 
+                    <Button title="Responsabilizar-se" onPress={() => {
+                        alert("Sucesso");
+                        setFuncResp(user.user.id);
+                        dispatch(actions.EDITAR_CHAMADOREQUEST({id: props.route.params.chamado.id, id_funcionario_resp: user.user.id}));
+                        dispatch(actionsChats.CRIAR_USER_REQUEST({iduser: user.user.id, nome: user.user.nome, idchat: props.route.params.chamado.id}));
+                    }}>Responsabilizar-se</Button>:null
+                }
                 <View>
                     <Button title="Salvar" onPress={() => handleSubmit()}></Button>
                     <Button title="Deletar" onPress={() => handleDelete(props.route.params.chamado.id)}></Button>

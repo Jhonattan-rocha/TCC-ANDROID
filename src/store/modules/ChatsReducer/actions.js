@@ -256,3 +256,90 @@ export function CHATS_ARQUIVO_DELETAR_FALURE(payload){
 
 
 
+export function USER_REQUEST(payload){
+    return {
+        type: types.USER_REQUEST,
+        payload: payload,  
+    };
+}
+
+export function USER_FALURE(payload){
+    return {
+        type: types.USER_FALURE,
+        payload: payload,  
+    };
+}
+
+export function USER_SUCCESS(payload){
+    return {
+        type: types.USER_SUCCESS,
+        payload: payload,  
+    };
+}
+
+export function CRIAR_USER_FALURE(payload){
+    return {
+        type: types.CRIAR_USER_FALURE,
+        payload: payload,  
+    };
+}
+
+export function CRIAR_USER_SUCCESS(payload){
+    return {
+        type: types.CRIAR_USER_SUCCESS,
+        payload: payload,  
+    };
+}
+
+
+export function CRIAR_USER_REQUEST(payload){
+    return {
+        type: types.CRIAR_USER_REQUEST,
+        payload: payload,  
+    };
+}
+
+export function EDITAR_USER_FALURE(payload){
+    return {
+        type: types.EDITAR_USER_FALURE,
+        payload: payload,  
+    };
+}
+
+export function EDITAR_USER_SUCCESS(payload){
+    return {
+        type: types.EDITAR_USER_SUCCESS,
+        payload: payload,  
+    };
+}
+
+export function EDITAR_USER_REQUEST(payload){
+    return {
+        type: types.EDITAR_USER_REQUEST,
+        payload: payload,  
+    };
+}
+
+export function DELETAR_USER_FALURE(payload){
+    return {
+        type: types.DELETAR_USER_FALURE,
+        payload: payload,  
+    };
+}
+
+export function DELETAR_USER_SUCCESS(payload){
+    return {
+        type: types.DELETAR_USER_SUCCESS,
+        payload: payload,  
+    };
+}
+
+export function DELETAR_USER_REQUEST(payload){
+    return {
+        type: types.DELETAR_USER_REQUEST,
+        payload: payload,  
+    };
+}
+
+
+

@@ -1,7 +1,9 @@
 import * as type from '../types';
 
 const initialState = {
-    chat: []
+    chat: [],
+    chats_buscados: [],
+    users: []
 }
 // caso precise de mais de um reducer, usar a função combineReducer
 
@@ -132,6 +134,16 @@ export default function recuder(state = initialState, action){
                 ...state,
                 chat: state.chat.filter(chat => chat['idChat'] !== id)
             };
+        }
+        case type.CHATS_BUSCAR_SUCCESS: {
+          const newState = {...state}
+          newState.chats_buscados = Object.values(action.payload);
+          return newState;
+        }
+        case type.USER_SUCCESS: {
+          const newState = {...state}
+          newState.users = action.payload;
+          return newState;
         }
 
       // aqui você pode definir suas ações e como o estado deve ser atualizado

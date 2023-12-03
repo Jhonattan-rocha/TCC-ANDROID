@@ -1,7 +1,8 @@
 import React from "react";
-import { View, TextInput, Button, Text, TouchableOpacity, StyleSheet, ScrollView, FlatList, NativeModules } from 'react-native';
+import { View, TextInput, Button, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, NativeModules, TouchableWithoutFeedback } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
+import { azulmaisclaro } from "../../config/colors";
 import * as actions from '../../store/modules/chamadosreducer/actions';
 import DropDown from "../../components/DropDownStatus";
 import DropDownCategorias from "../../components/DropDownCategorias";
@@ -10,6 +11,7 @@ import { TextStyled, TextInputStyled } from "./styled";
 import RNDateTimePiker from '@react-native-community/datetimepicker';
 import IconAnt from 'react-native-vector-icons/AntDesign';
 import Iconion from 'react-native-vector-icons/Ionicons';
+import IconEnt from 'react-native-vector-icons/Entypo';
 import DocumentPicker from "react-native-document-picker";
 import RNFS from 'react-native-fs';
 
@@ -23,7 +25,7 @@ export default function CriarChamado(props){
             return
         }
 
-        const dados = {causa: causa, operador: operador, descricao: descricao, id_status: status, id_funcionario_criador: user.id, categoria: categoria, agendamento: agendamento, setor: setor, files: files, saveFiles: handleSaveFiles}
+        const dados = {causa: causa, operador: operador, descricao: descricao, id_status: status, id_funcionario_criador: user.id, categoria: categoria, agendamento: agendamento, setor: setor, anexos: files, comentarios: comentarios}
         try{
             dispatch(actions.ChamadoRequest(dados));
             dispatch(actions.EXEC_PROCEDURE_REQUEST({query: 'call CountChamados();'}));
@@ -37,11 +39,18 @@ export default function CriarChamado(props){
     const handleFileSelection = async () => {
         try {
         const res = await DocumentPicker.pick({
-            type: [DocumentPicker.types.allFiles], // Defina os tipos de arquivos que deseja permitir
+            type: [DocumentPicker.types.allFiles], 
         });
-    
-        // Aqui você pode fazer algo com o arquivo selecionado, como enviá-lo para o servidor
-        setFiles(res)
+
+        let originalname = res[0].name;
+        let filename = Date.now() + "_" + user.id + "_" + originalname;
+        let id_dono = user.id;
+        let mime_type = res[0].type;
+        let url = RNFS.ExternalDirectoryPath + "/" + res[0].name;
+        let file = res[0]
+        let dados = {originalname: originalname, filename: filename, id_dono: id_dono, mime_type: mime_type, id_chamado: 0, url: url, file: file};
+        setFiles([...files, dados]);
+
         } catch (error) {
         // Lidar com erros de seleção de arquivo
         console.log('Erro ao selecionar arquivo:', error);
@@ -56,21 +65,25 @@ export default function CriarChamado(props){
 
     const handleOpenFile = (file) => {
         const { FileToolsModule } = NativeModules;
-        const url = RNFS.ExternalDirectoryPath + "/" + file.name
-        FileToolsModule.openFile(url, file.type)
+        const url = RNFS.ExternalDirectoryPath + "/" + file.filename
+        RNFS.copyFile(file.file.uri, url)
         .then(response => {
-            console.log(response)
+            FileToolsModule.openFile(url, file.mime_type)
+            .then(response => {
+                console.log(response)
+            })
+            .catch(err => {
+                console.log(err)
+            }); 
         })
-        .catch(err => {
-            console.log(err)
-        });
+        .catch(err => console.log(err)); 
     }
 
     const handleShareFile = (file) => {
         const { FileToolsModule } = NativeModules
-        RNFS.copyFile(file.uri, RNFS.ExternalDirectoryPath + "/" + file.name)
+        RNFS.copyFile(file.file.uri, RNFS.ExternalDirectoryPath + "/" + file.filename)
         .then(response => {
-            FileToolsModule.shareFiles([RNFS.ExternalDirectoryPath + "/" + file.name], [file.type], "")
+            FileToolsModule.shareFiles([RNFS.ExternalDirectoryPath + "/" + file.filename], [file.mime_type], "")
             .then(response => {
                 onsole.log(response);
             })
@@ -79,54 +92,22 @@ export default function CriarChamado(props){
         .catch(err => console.log(err)); 
     }
 
-    function handleSaveFiles(files, id, user){
-        try{
-            files.forEach(async file => {
-                RNFS.copyFile(file.uri, RNFS.ExternalDirectoryPath + "/" + file.name)
-                .then(response => {
-                    RNFS.exists(RNFS.ExternalDirectoryPath + "/" + file.name)
-                    .then(response => { 
-                        if(response){
-                            RNFS.readFile(RNFS.ExternalDirectoryPath + "/" + file.name, 'base64')
-                            .then(response => {
-                                bytes = response
-                                let originalname = file.name;
-                                let filename = Date.now() + "_" + user.user.id + "_" + originalname;
-                                let id_dono = user.user.id;
-                                let id_empresa_dona = user.user.id_empresa;
-                                let mime_type = file.type;
-                                let id_chamado = id;
-                                let url = RNFS.ExternalDirectoryPath + "/" + file.name;
-                                let dados = {originalname: originalname, filename: filename, id_dono: id_dono, id_empresa_dona:id_empresa_dona, mime_type: mime_type, id_chamado: id_chamado, file: file, url: url};
-                                dispatch(actions.ARQUIVO_CRIAR_REQUEST(dados));
-                            })
-                            .catch(err => console.log(err))
-                        }
-                    })
-                    .catch(err => console.log(err));
-                })
-                .catch(err => console.log(err));
-            });
-            setTimeout(() => {
-                dispatch(actions.ARQUIVO_BUSCAR_REQUEST());
-            }, 1000);
-        }catch(err){
-            console.log(err)
-        }
-    }
-
     const user = useSelector(state => state.authreducer.user);
     const navigation = useNavigation();
-    const [causa, setCausa] = React.useState();
-    const [operador, setOperador] = React.useState();
-    const [descricao, setDescricao] = React.useState();
+    const [causa, setCausa] = React.useState("");
+    const [operador, setOperador] = React.useState("");
+    const [descricao, setDescricao] = React.useState("");
     const [status, setStatus] = React.useState();
-    const [categoria, setCategoria] =  React.useState();
+    const [categoria, setCategoria] =  React.useState("");
     const [agendamento, setAgendamento] = React.useState(new Date());
     const [showDateTime, setShowDateTime] = React.useState(false);
     const [setor, setSetor] = React.useState();
-    const [files, setFiles] = React.useState(null);
-
+    const [files, setFiles] = React.useState([]);
+    const [comentarios, setComentarios] = React.useState([]);
+    const [novoComentario, setNovoComentario] = React.useState({});
+    const [showComments, setShowComments] = React.useState(false);
+    const [modalComentario, showModalComentario] = React.useState(false);
+    
     return (
         <>
             <ScrollView>
@@ -186,7 +167,7 @@ export default function CriarChamado(props){
                         {files ? files.map(file => (
                             <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between'}} key={generateRandomInteger(1, 100000)}>
                                 <TouchableOpacity style={{width: '70%'}} onPress={() => handleOpenFile(file)}>
-                                    <TextInput style={styles.namefile} editable={false} >{file.name}</TextInput>
+                                    <TextInput style={styles.namefile} editable={false} >{file.filename}</TextInput>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={() => handleShareFile(file)} style={styles.botaoAnexo}> 
                                     <Iconion name="share-social-sharp" size={30} color="#fff"></Iconion>
@@ -202,6 +183,56 @@ export default function CriarChamado(props){
                     <TouchableOpacity style={styles.botaoAnexo} onPress={() => handleFileSelection()}>
                         <Iconion name="ios-attach-outline" color="#fff" size={30}></Iconion>
                     </TouchableOpacity>
+                </View>
+
+                <View style={{width: 'auto'}}>
+                    <View style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end'}}>
+                        <TouchableOpacity style={[styles.labelComentarios, { flex: 1 }]} onPress={() => setShowComments(!showComments)}>
+                            <Text style={{ color: 'white', fontSize: 14, textAlign: 'center', fontWeight: 'bold' }}>Comentarios</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => {
+                            showModalComentario(!modalComentario);
+                        }}>
+                            <IconAnt name="pluscircle" color="#000" size={35}></IconAnt>
+                        </TouchableOpacity>
+                    </View>
+                    {showComments ? 
+                        <View style={styles.comentarios}>
+                            {comentarios.length > 0 && comentarios.map(co => {
+                                return ( 
+                                    <View key={comentarios.indexOf(co)}>
+                                        <Text style={styles.itemComentario}>{co}</Text>
+                                    </View>
+                                 );
+                            })}
+                        </View>
+                    : null}
+                {modalComentario ? 
+                    <Modal visible={modalComentario} transparent={true} animationType="fade">
+                        <TouchableWithoutFeedback onPress={() => {
+                            showModalComentario(false)
+                        }}>
+                            <View style={styles.overlay} />
+                        </TouchableWithoutFeedback>
+                        <View style={styles.containerMes}>
+                            <TextInput
+                            style={styles.inputMakeDir} 
+                            value={novoComentario}
+                            autoFocus={true}
+                            numberOfLines={3}
+                            multiline
+                            onChangeText={(txt) => {
+                                setNovoComentario(txt);
+                            }}
+                            />
+                            <Button title={'Criar'} onPress={() => {
+                                setComentarios([...comentarios, novoComentario])
+                                showModalComentario(false);
+                                setNovoComentario("");
+                            }}></Button>
+                        </View>
+                    </Modal>:
+                    null}
                 </View>
 
                 <Button title="Criar" onPress={(e) => handleSubmit(e)}></Button>
@@ -247,5 +278,47 @@ const styles = StyleSheet.create({
         borderWidth: 1, 
         borderRadius: 10,
         paddingLeft: 10
-    }
+    },
+    comentarios: {
+        flex: 1
+    },
+    labelComentarios: {
+        backgroundColor: azulmaisclaro,
+        borderRadius: 10,
+        padding: 5,
+        height: 40,
+    },
+    itemComentario: {
+        textAlign: 'center',
+        fontSize: 17,
+        color: 'black',
+        height: 40
+    },
+    botoesComentarios: {
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: "flex-end",
+        flexDirection: 'row',
+        width: 'auto'
+    },
+    overlay: {
+        flex: 1,
+    },
+    containerMes: {
+        backgroundColor: '#fff',
+        padding: 16,
+        margin: 32,
+        borderRadius: 8,
+        maxHeight: 250,
+        height: 150
+    },
+    inputMakeDir: {
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        marginBottom: 16,
+        color: 'black',
+        flexWrap: 'wrap',
+        minHeight: 50,
+        maxHeight: 200
+    },
 });

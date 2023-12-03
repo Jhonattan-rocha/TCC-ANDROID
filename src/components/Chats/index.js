@@ -1,16 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { Divhome, DivListaDeChamados, DivDados, TextStyled, DivChatList,  } from "./styled";
 import { useDispatch, useSelector } from "react-redux";
 import * as actions from '../../store/modules/chamadosreducer/actions';
+import * as actionsChats from '../../store/modules/ChatsReducer/actions';
 import DropDown from "../DropDownFiltro";
 import { View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, ScrollView, Image, Modal } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import IconAnt from 'react-native-vector-icons/AntDesign';
 
 export default function Chats(props) {
-  const chamados = useSelector(state => state.chamadosreducer.chamados.result) || [];
-  const chats = useSelector(state => state.chatreducer.chat) || [];
-  const iduser = useSelector(state => state.authreducer.user.id)
+  const chamados = useSelector(state => state.chamadosreducer.chamados);
+  const mensagens = useSelector(state => state.chatreducer.chat);
+  const iduser = useSelector(state => state.authreducer.user.id);
+  const chats_dados = useSelector(state => state.chatreducer.chats_buscados);
+  const chats = chats_dados.filter(ch => {
+    for(let usr of ch['users']){
+      if(usr['iduser'] === iduser){
+        return true;
+      }
+    }
+    return false;
+  });
   const dispatch = useDispatch(); 
   const [filtroChamados, setFiltroChamados] = React.useState("my");
   const navigation = useNavigation();
@@ -18,23 +28,28 @@ export default function Chats(props) {
   const [chamadoSelecionado, setChamadoSelecionado] = React.useState("");
 
   React.useEffect(() => {
+    dispatch(actions.STATUS_REQUEST());
     if(filtroChamados === 'my'){
-      dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+eq+${iduser}`}));
-    }else if(filtroChamados === "resp"){
-        dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_resp+eq+${iduser}`}));
+        dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+eq+${iduser}`}));
     }else if(filtroChamados === "other"){
-      dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+ne+${iduser}`}));
+        dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_criador+ne+${iduser}`}));
     }else if(filtroChamados === "any"){
         dispatch(actions.CHAMADOSREQUEST());
+    }else if(filtroChamados === "resp"){
+      dispatch(actions.CHAMADOSREQUEST({filter: `id_funcionario_resp+eq+${iduser}`}));
     }
-  }, [filtroChamados])
+  }, [iduser, dispatch, filtroChamados]);
 
-  function findChat(id){
-    let dados = chats.find(ch => ch['idChat'] === id)
-    if(!dados){
-      return false
+  useEffect(() => {
+      dispatch(actionsChats.CHATS_BUSCAR_REQUEST());
+  }, [chamados]);
+
+  const findMessages = (id) => {
+    let mes = mensagens.find(ch => Number(ch['idChat']) === Number(id))
+    if(!mes){
+      return false;
     }
-    return dados['mensagens']
+    return mes['mensagens'];
   }
 
   return (
@@ -42,8 +57,8 @@ export default function Chats(props) {
           <DivListaDeChamados>
             <DropDown onSelected={setFiltroChamados}></DropDown>
             <DivChatList>
-            {chamados.map(chamado => {
-              let messages = findChat(chamado.id)
+            {chats.map(ch => {
+              let messages = findMessages(ch['id']);
 
               let dados = messages[messages.length -1] ?? ""
               let data = new Date(dados['data']) ?? new Date()
@@ -64,14 +79,14 @@ export default function Chats(props) {
 
               return (
                 <DivDados onPress={() => {
-                      navigation.navigate("ChatsStack", {screen:"Chat", params: {chat: chamado}})
-                    }} key={chamado.id}
+                      navigation.navigate("ChatsStack", {screen:"Chat", params: {chat: ch}})
+                    }} key={ch.id}
                     onLongPress={() => {
                       setChamadoSelecionado(dados)
                       setSowLastMes(true)
                       }}>
                     <View>
-                      <TextStyled>{chamado.causa}</TextStyled> 
+                      <TextStyled>{ch.titulo}</TextStyled> 
                       <View style={styles.MessageContainer}>
                         { dados ? salvo ? <IconAnt name="swap" size={20} color="#000"></IconAnt>:<IconAnt name="swapright" size={20} color="#000"></IconAnt>: null}
                         <Text style={styles.textMessage}> {usuario.length >= 0 ? usuarioCapitalizeFirstLetter: ""} </Text>
